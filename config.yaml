@@ -1,9 +1,14 @@
 jarvis:
   name: JARVIS
   model: claude-sonnet-4-6
-  max_tokens: 4096
+  max_tokens: 8192
   temperature: 0.7
-  version: "1.0.0"
+  version: "2.0.0"
+  # Phase 2 advanced features
+  extended_thinking: true
+  thinking_budget: 5000
+  prompt_caching: true
+  computer_use: true
 
 voice:
   wake_word: "jarvis"

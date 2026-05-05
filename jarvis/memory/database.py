@@ -103,4 +103,17 @@ def init_db():
         END;
     """)
     conn.commit()
+
+    # Phase 2: knowledge graph + embeddings columns
+    try:
+        from jarvis.memory.knowledge_graph import init_kg
+        init_kg()
+    except Exception as e:
+        log.debug("KG init skipped: %s", e)
+    try:
+        from jarvis.memory.embeddings import ensure_embedding_column
+        ensure_embedding_column()
+    except Exception as e:
+        log.debug("Embedding column init skipped: %s", e)
+
     log.info("Database initialized at %s", DB_PATH)

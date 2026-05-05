@@ -31,6 +31,12 @@ class Remember(BaseTool):
             importance: int = 3) -> str:
         try:
             mid = memory_store.store_memory(content, category, tags, importance)
+            # Compute embedding asynchronously so semantic recall works
+            try:
+                from jarvis.memory import embeddings
+                embeddings.update_embedding(mid, content)
+            except Exception as e:
+                log.debug("Embedding update skipped: %s", e)
             return json.dumps({"success": True, "memory_id": mid, "stored": content[:80]})
         except Exception as e:
             return json.dumps({"error": str(e)})

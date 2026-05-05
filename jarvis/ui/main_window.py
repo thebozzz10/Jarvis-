@@ -8,7 +8,8 @@ from jarvis.core.event_bus import (bus, JARVIS_TEXT_CHUNK, JARVIS_DONE,
                                     TOOL_CALLED, TOOL_RESULT, STATUS_CHANGED,
                                     LISTENING_START, LISTENING_STOP, USER_SPEECH)
 from jarvis.ui.components.chat_widget import ChatWidget
-from jarvis.ui.components.waveform_widget import WaveformWidget, WaveformWidget as WF
+from jarvis.ui.components.arc_reactor import ArcReactor as WaveformWidget
+from jarvis.ui.components.arc_reactor import ArcReactor as WF
 from jarvis.ui.components.status_bar import StatusBar
 from jarvis.utils.config import get
 from jarvis.utils.logger import get_logger
@@ -79,8 +80,8 @@ class MainWindow:
             font=("SF Mono", 10), text_color=MUTED,
         ).pack(side=tk.RIGHT, padx=16)
 
-        # ── Waveform ──────────────────────────────────────────────────────
-        self._waveform = WaveformWidget(root, width=W - 20, height=110)
+        # ── ARC Reactor ───────────────────────────────────────────────────
+        self._waveform = WaveformWidget(root, width=W - 20, height=200)
         self._waveform.pack(fill=tk.X, padx=10, pady=(6, 0))
 
         # ── Chat history ──────────────────────────────────────────────────

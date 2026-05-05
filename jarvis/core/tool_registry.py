@@ -57,9 +57,22 @@ def build_registry() -> ToolRegistry:
     from jarvis.tools.web_tools import WebSearch, FetchWebpage
     from jarvis.tools.system_tools import GetSystemInfo, RunShellCommand, SendNotification, SetVolume
     from jarvis.tools.memory_tools import Remember, Recall, GetTimeAndDate, ClipboardControl
+    from jarvis.tools.calendar_tools import (GetCalendarEvents, CreateCalendarEvent,
+                                              GetReminders, CreateReminder)
+    from jarvis.tools.contacts_tools import SearchContacts
+    from jarvis.tools.mail_tools import GetUnreadMail, SendMail, SendMessage
+    from jarvis.tools.notes_tools import CreateNote, SearchNotes
+    from jarvis.tools.music_tools import ControlMusic
+    from jarvis.tools.shortcuts_tools import RunShortcut, ListShortcuts
+    from jarvis.tools.code_tools import ExecutePython
+    from jarvis.tools.sub_agent_tools import DelegateTask
+    from jarvis.tools.maps_tools import GetWeather, OpenInMaps
+    from jarvis.tools.semantic_memory_tools import (SemanticRecall, AddKnowledgeRelation,
+                                                      QueryKnowledgeGraph)
 
     registry = ToolRegistry()
     for tool_cls in [
+        # Original 25 tools
         TakeScreenshot, ReadScreenText, FindOnScreen,
         MouseClick, TypeText, KeyPress, MouseDrag, Scroll,
         LaunchApp, ListWindows, FocusWindow,
@@ -67,6 +80,18 @@ def build_registry() -> ToolRegistry:
         WebSearch, FetchWebpage,
         GetSystemInfo, RunShellCommand, SendNotification, SetVolume,
         Remember, Recall, GetTimeAndDate, ClipboardControl,
+        # Phase 2: personal data
+        GetCalendarEvents, CreateCalendarEvent, GetReminders, CreateReminder,
+        SearchContacts,
+        GetUnreadMail, SendMail, SendMessage,
+        CreateNote, SearchNotes,
+        ControlMusic,
+        RunShortcut, ListShortcuts,
+        # Phase 2: advanced capabilities
+        ExecutePython,
+        DelegateTask,
+        GetWeather, OpenInMaps,
+        SemanticRecall, AddKnowledgeRelation, QueryKnowledgeGraph,
     ]:
         registry.register(tool_cls())
     return registry

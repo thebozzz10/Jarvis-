@@ -190,6 +190,7 @@ def main():
         try:
             from jarvis.voice.stt import SpeechToText
             from jarvis.voice.wake_word import WakeWordDetector
+            from jarvis.voice.barge_in import BargeInDetector
 
             stt = SpeechToText()
             _start_stt_voice_thread(stt, tts)
@@ -200,8 +201,35 @@ def main():
 
             wake = WakeWordDetector(on_detected=_on_wake)
             wake.start()
+
+            # Real-time barge-in: interrupt TTS when user starts speaking
+            if tts:
+                def _is_speaking():
+                    return tts._playing.is_set()
+                def _interrupt():
+                    tts.stop_current()
+                    from jarvis.core.event_bus import bus, LISTENING_START
+                    bus.publish(LISTENING_START)
+                barge = BargeInDetector(_is_speaking, _interrupt)
+                barge.start()
         except Exception as e:
             log.warning("Voice input unavailable: %s", e)
+
+    # ── Proactive monitor ─────────────────────────────────────────────────
+    try:
+        from jarvis.proactive.monitor import ProactiveMonitor
+
+        def _proactive_alert(message: str):
+            log.info("Proactive: %s", message)
+            if tts:
+                tts.speak(message)
+            from jarvis.core.event_bus import bus
+            bus.publish("USER_SPEECH_TEXT", f"[Proactive observation, please acknowledge briefly]: {message}")
+
+        monitor = ProactiveMonitor(on_alert=_proactive_alert)
+        monitor.start()
+    except Exception as e:
+        log.warning("Proactive monitor unavailable: %s", e)
 
     # ── UI window (own thread) ────────────────────────────────────────────
     window = None
