@@ -43,8 +43,8 @@ class ArcReactor(tk.Canvas):
     def __init__(self, parent, width: int = 760, height: int = 200, **kwargs):
         super().__init__(parent, width=width, height=height,
                          bg=BG, highlightthickness=0, **kwargs)
-        self._w = width
-        self._h = height
+        self._width = width
+        self._height = height
         self._state = self.IDLE
         self._frame = 0
         self._particles: list[Particle] = []
@@ -63,7 +63,7 @@ class ArcReactor(tk.Canvas):
 
     def _animate(self):
         self.delete("all")
-        cx, cy = self._w // 2, self._h // 2
+        cx, cy = self._width // 2, self._height // 2
         t = time.time()
 
         # Smooth amplitude
@@ -150,7 +150,7 @@ class ArcReactor(tk.Canvas):
             p.vx += dx / dist * 0.02
             p.vy += dy / dist * 0.02
             p.life -= 1
-            if p.life > 0 and 0 < p.x < self._w and 0 < p.y < self._h:
+            if p.life > 0 and 0 < p.x < self._width and 0 < p.y < self._height:
                 alpha = p.life / p.max_life
                 color = self._fade(ACCENT, alpha)
                 self.create_oval(p.x - p.radius, p.y - p.radius,
@@ -186,7 +186,7 @@ class ArcReactor(tk.Canvas):
             self.SPEAKING: ("RESPONDING", ACCENT),
         }
         label, color = label_map.get(self._state, ("STANDBY", "#3A5570"))
-        self.create_text(cx, self._h - 14, text=f"⬢ {label} ⬢",
+        self.create_text(cx, self._height - 14, text=f"⬢ {label} ⬢",
                          fill=color, font=("SF Mono", 10, "bold"))
 
     @staticmethod
