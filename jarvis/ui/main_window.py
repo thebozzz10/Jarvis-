@@ -49,6 +49,8 @@ class MainWindow:
         self._root.configure(fg_color=BG)
         self._root.resizable(True, True)
         self._root.protocol("WM_DELETE_WINDOW", self.hide)
+        # Flush pending Tcl/Tk initialization before packing child widgets
+        self._root.update_idletasks()
 
         self._setup_layout()
         self._subscribe_events()
