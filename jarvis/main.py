@@ -143,11 +143,6 @@ def _start_hotkey(toggle_fn):
     return hk
 
 
-def _run_ui_thread(window):
-    """Run the customtkinter window in its own thread."""
-    window.build()
-    window.run()
-
 
 def main():
     args = parse_args()
@@ -231,7 +226,7 @@ def main():
     except Exception as e:
         log.warning("Proactive monitor unavailable: %s", e)
 
-    # ── UI window (own thread) ────────────────────────────────────────────
+    # ── UI window — built here on the main thread before rumps.run() ─────
     window = None
     if not args.no_menubar:
         from jarvis.ui.main_window import MainWindow
@@ -241,12 +236,11 @@ def main():
             _bus.publish("USER_SPEECH_TEXT", text)
 
         window = MainWindow(on_user_input=on_user_text)
-        ui_thread = threading.Thread(target=_run_ui_thread, args=(window,), daemon=True, name="ui")
-        ui_thread.start()
+        window.build()  # must happen on main thread (NSWindow requirement)
 
         _start_hotkey(window.toggle)
 
-        log.info("UI window started")
+        log.info("UI window built on main thread")
 
     # ── Announce startup ──────────────────────────────────────────────────
     def _announce():
@@ -273,19 +267,23 @@ def main():
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
 
-    # ── Menu bar (blocks main thread on macOS) ────────────────────────────
+    # ── Menu bar — pumps tkinter via timer so both live on main thread ────
     if not args.no_menubar:
         try:
             from jarvis.ui.menu_bar import JarvisMenuBar
             menu_bar = JarvisMenuBar(
                 on_toggle_window=window.toggle if window else None,
                 on_quit=lambda: _shutdown(None, None),
+                window=window,
             )
-            log.info("Menu bar starting (main thread)")
+            log.info("Menu bar starting (main thread, tk pumped via timer)")
             menu_bar.run()
         except ImportError:
-            log.warning("rumps not available — running without menu bar")
-            _shutdown_event.wait()
+            log.warning("rumps not available — running window mainloop directly")
+            if window:
+                window.run()
+            else:
+                _shutdown_event.wait()
     else:
         log.info("Running in headless mode — press Ctrl+C to quit")
         _shutdown_event.wait()

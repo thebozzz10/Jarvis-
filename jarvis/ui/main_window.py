@@ -226,6 +226,14 @@ class MainWindow:
         else:
             self.show()
 
+    def update_once(self):
+        """Pump the tkinter event loop once — called from rumps timer on main thread."""
+        if self._root:
+            try:
+                self._root.update()
+            except tk.TclError:
+                pass
+
     def run(self):
         if self._root:
             self._root.mainloop()

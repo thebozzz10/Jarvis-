@@ -12,14 +12,19 @@ VERSION = get("jarvis", "version", "1.0.0")
 
 
 class JarvisMenuBar(rumps.App):
-    def __init__(self, on_toggle_window=None, on_quit=None):
+    def __init__(self, on_toggle_window=None, on_quit=None, window=None):
         super().__init__("J", quit_button=None)
         self._on_toggle_window = on_toggle_window
         self._on_quit_cb = on_quit
+        self._tk_window = window
         self._status_text = "Online"
         self._memory_count = 0
         self._build_menu()
         self._subscribe()
+        if window:
+            # Pump the tkinter event loop from the main AppKit thread (~60 fps)
+            self._tk_timer = rumps.Timer(self._pump_tk, 0.016)
+            self._tk_timer.start()
 
     def _build_menu(self):
         self.menu = [
@@ -38,6 +43,10 @@ class JarvisMenuBar(rumps.App):
 
     def _subscribe(self):
         bus.subscribe(STATUS_CHANGED, self._on_status_changed)
+
+    def _pump_tk(self, _):
+        if self._tk_window:
+            self._tk_window.update_once()
 
     def _on_status_changed(self, data):
         if isinstance(data, dict):
