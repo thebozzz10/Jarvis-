@@ -50,7 +50,7 @@ class ArcReactor(tk.Canvas):
         self._particles: list[Particle] = []
         self._amplitude = 0.0
         self._target_amplitude = 0.0
-        self._animate()
+        self.after(0, self._animate)
 
     def set_state(self, state: str):
         self._state = state
