@@ -238,7 +238,11 @@ def main():
         window = MainWindow(on_user_input=on_user_text)
         window.build()  # must happen on main thread (NSWindow requirement)
 
-        _start_hotkey(window.toggle)
+        # pynput fires on its own thread; schedule the tkinter call on main thread
+        def _hotkey_safe():
+            if window._root:
+                window._root.after(0, window.toggle)
+        _start_hotkey(_hotkey_safe)
 
         log.info("UI window built on main thread")
 
