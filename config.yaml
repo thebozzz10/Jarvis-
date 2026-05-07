@@ -31,7 +31,7 @@ ui:
   window_opacity: 0.97
   always_on_top: false
   start_minimized: false
-  hotkey: "<cmd>+<space>"
+  hotkey: "<alt>+<space>"
 
 memory:
   db_path: "~/.jarvis/jarvis.db"
