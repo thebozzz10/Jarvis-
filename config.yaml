@@ -8,7 +8,7 @@ jarvis:
   extended_thinking: true
   thinking_budget: 5000
   prompt_caching: true
-  computer_use: true
+  computer_use: false
 
 voice:
   wake_word: "jarvis"
