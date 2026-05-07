@@ -26,8 +26,8 @@ ui:
   panel_color: "#0F1729"
   text_color: "#E8F4FF"
   muted_color: "#7BA7C8"
-  window_width: 800
-  window_height: 600
+  window_width: 820
+  window_height: 720
   window_opacity: 0.97
   always_on_top: false
   start_minimized: false

@@ -83,7 +83,7 @@ class MainWindow:
         ).pack(side=tk.RIGHT, padx=16)
 
         # ── ARC Reactor ───────────────────────────────────────────────────
-        self._waveform = WaveformWidget(root, width=W - 20, height=200)
+        self._waveform = WaveformWidget(root, width=W - 20, height=160)
         self._waveform.pack(fill=tk.X, padx=10, pady=(6, 0))
 
         # ── Chat history ──────────────────────────────────────────────────
