@@ -2,19 +2,18 @@
 JARVIS — main entry point.
 
 Threading model:
-  MAIN THREAD  → rumps menu bar (AppKit run loop, macOS requirement)
-  THREAD 2     → customtkinter UI window (separate tk mainloop)
-  THREAD 3     → pvporcupine wake word detector
-  THREAD 4     → STT recorder (triggered by LISTENING_START event)
-  THREAD 5     → asyncio event loop for JarvisAgent
-  THREAD 6     → TTS playback queue
-  THREAD 7     → pynput global hotkey
+  MAIN THREAD  → customtkinter mainloop (NSWindow requirement)
+  THREAD 2     → pvporcupine wake word detector
+  THREAD 3     → STT recorder (triggered by LISTENING_START event)
+  THREAD 4     → asyncio event loop for JarvisAgent
+  THREAD 5     → TTS playback queue
+  THREAD 6     → pynput global hotkey
 
 Usage:
   python -m jarvis.main                  # full system
   python -m jarvis.main --no-voice       # skip wake word + STT/TTS
   python -m jarvis.main --debug          # verbose logging
-  python -m jarvis.main --no-voice --no-menubar  # text-only terminal mode
+  python -m jarvis.main --no-voice --no-ui  # headless terminal mode
 """
 import argparse
 import asyncio
@@ -33,6 +32,7 @@ def parse_args():
     p = argparse.ArgumentParser(description="JARVIS AI Assistant")
     p.add_argument("--no-voice", action="store_true", help="Disable voice I/O")
     p.add_argument("--no-menubar", action="store_true", help="Disable menu bar")
+    p.add_argument("--no-ui", action="store_true", help="Headless mode, no window")
     p.add_argument("--debug", action="store_true", help="Verbose logging")
     return p.parse_args()
 
@@ -226,11 +226,12 @@ def main():
     except Exception as e:
         log.warning("Proactive monitor unavailable: %s", e)
 
-    # ── UI window — built here on the main thread before rumps.run() ─────
+    # ── UI window — built on the main thread; mainloop() will block here ──
     window = None
-    if not args.no_menubar:
+    show_ui = not args.no_ui
+    if show_ui:
         from jarvis.ui.main_window import MainWindow
-        from jarvis.core.event_bus import bus as _bus, USER_SPEECH
+        from jarvis.core.event_bus import bus as _bus
 
         def on_user_text(text: str):
             _bus.publish("USER_SPEECH_TEXT", text)
@@ -238,13 +239,13 @@ def main():
         window = MainWindow(on_user_input=on_user_text)
         window.build()  # must happen on main thread (NSWindow requirement)
 
-        # pynput fires on its own thread; schedule the tkinter call on main thread
+        # pynput fires on its own thread; marshal back to tkinter main thread
         def _hotkey_safe():
             if window._root:
                 window._root.after(0, window.toggle)
         _start_hotkey(_hotkey_safe)
 
-        log.info("UI window built on main thread")
+        log.info("UI window built")
 
     # ── Announce startup ──────────────────────────────────────────────────
     def _announce():
@@ -271,25 +272,12 @@ def main():
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
 
-    # ── Menu bar — pumps tkinter via timer so both live on main thread ────
-    if not args.no_menubar:
-        try:
-            from jarvis.ui.menu_bar import JarvisMenuBar
-            menu_bar = JarvisMenuBar(
-                on_toggle_window=window.toggle if window else None,
-                on_quit=lambda: _shutdown(None, None),
-                window=window,
-            )
-            log.info("Menu bar starting (main thread, tk pumped via timer)")
-            menu_bar.run()
-        except ImportError:
-            log.warning("rumps not available — running window mainloop directly")
-            if window:
-                window.run()
-            else:
-                _shutdown_event.wait()
+    # ── Main thread: tkinter mainloop OR headless wait ────────────────────
+    if window:
+        log.info("Starting UI (press Option+Space to show/hide)")
+        window.run()  # blocks main thread — this is correct for tkinter/NSWindow
     else:
-        log.info("Running in headless mode — press Ctrl+C to quit")
+        log.info("Headless mode — press Ctrl+C to quit")
         _shutdown_event.wait()
 
 
