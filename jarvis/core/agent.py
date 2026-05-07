@@ -70,17 +70,16 @@ class JarvisAgent:
     async def _run_loop(self, system, on_chunk, on_thinking) -> str:
         full_text = ""
         for round_idx in range(MAX_TOOL_ROUNDS):
-            text, thinking, tool_calls = await self._stream_once(system, on_chunk, on_thinking)
+            text, assistant_content, tool_calls = await self._stream_once(
+                system, on_chunk, on_thinking
+            )
             full_text += text
 
             if not tool_calls:
                 break
 
-            # Execute tools (run blocking work off-loop)
+            # Execute tools
             tool_results = []
-            assistant_blocks: list[dict] = []
-            if thinking:
-                assistant_blocks.append({"type": "thinking", "thinking": thinking})
             for tc in tool_calls:
                 bus.publish(TOOL_CALLED, {"name": tc["name"], "input": tc["input"]})
                 result = await asyncio.get_event_loop().run_in_executor(
@@ -90,12 +89,9 @@ class JarvisAgent:
                 add_message(self._session_id, "tool", str(result),
                             tool_name=tc["name"], tool_input=tc["input"], tool_result=str(result))
                 tool_results.append(self._make_tool_result(tc, result))
-                assistant_blocks.append({"type": "tool_use", "id": tc["id"],
-                                          "name": tc["name"], "input": tc["input"]})
-            if text:
-                assistant_blocks.append({"type": "text", "text": text})
 
-            self._history.append({"role": "assistant", "content": assistant_blocks})
+            # assistant_content comes from get_final_message() — includes signed thinking blocks
+            self._history.append({"role": "assistant", "content": assistant_content})
             self._history.append({"role": "user", "content": tool_results})
 
         return full_text
@@ -127,12 +123,15 @@ class JarvisAgent:
         return {"type": "tool_result", "tool_use_id": tc["id"],
                 "content": result if isinstance(result, str) else json.dumps(result)}
 
-    async def _stream_once(self, system, on_chunk, on_thinking) -> tuple[str, str, list[dict]]:
+    async def _stream_once(
+        self, system, on_chunk, on_thinking
+    ) -> tuple[str, list[dict], list[dict]]:
+        """Stream one API turn. Returns (text, assistant_content_blocks, tool_calls).
+
+        assistant_content_blocks comes from get_final_message() so thinking blocks
+        carry their required 'signature' field for subsequent turns.
+        """
         text_parts: list[str] = []
-        thinking_parts: list[str] = []
-        tool_calls: list[dict] = []
-        current_tool: dict | None = None
-        current_json_parts: list[str] = []
 
         kwargs: dict = {
             "model": MODEL,
@@ -144,48 +143,48 @@ class JarvisAgent:
 
         if ENABLE_THINKING:
             kwargs["thinking"] = {"type": "enabled", "budget_tokens": THINKING_BUDGET}
-            kwargs["temperature"] = 1.0  # required when thinking is enabled
+            kwargs["temperature"] = 1.0
 
         if ENABLE_COMPUTER_USE:
             kwargs["betas"] = ["computer-use-2025-01-24"]
+
+        assistant_content: list[dict] = []
+        tool_calls: list[dict] = []
 
         try:
             stream_method = (self._client.beta.messages.stream
                              if ENABLE_COMPUTER_USE else self._client.messages.stream)
             async with stream_method(**kwargs) as stream:
+                # Stream for UI feedback only
                 async for event in stream:
-                    etype = event.type
-
-                    if etype == "content_block_start":
-                        block = event.content_block
-                        if block.type == "tool_use":
-                            current_tool = {"id": block.id, "name": block.name, "input": {}}
-                            current_json_parts = []
-
-                    elif etype == "content_block_delta":
+                    if event.type == "content_block_delta":
                         delta = event.delta
                         if delta.type == "text_delta":
-                            chunk = delta.text
-                            text_parts.append(chunk)
+                            text_parts.append(delta.text)
                             if on_chunk:
-                                on_chunk(chunk)
-                        elif delta.type == "thinking_delta":
-                            thinking_parts.append(delta.thinking)
-                            if on_thinking:
-                                on_thinking(delta.thinking)
-                        elif delta.type == "input_json_delta":
-                            current_json_parts.append(delta.partial_json)
+                                on_chunk(delta.text)
+                        elif delta.type == "thinking_delta" and on_thinking:
+                            on_thinking(delta.thinking)
 
-                    elif etype == "content_block_stop":
-                        if current_tool is not None:
-                            raw = "".join(current_json_parts)
-                            try:
-                                current_tool["input"] = json.loads(raw) if raw else {}
-                            except json.JSONDecodeError:
-                                current_tool["input"] = {}
-                            tool_calls.append(current_tool)
-                            current_tool = None
-                            current_json_parts = []
+                # Final message has complete, signed content blocks
+                final_msg = await stream.get_final_message()
+
+            for block in final_msg.content:
+                if block.type == "text":
+                    assistant_content.append({"type": "text", "text": block.text})
+                elif block.type == "thinking":
+                    # signature is required by the API on subsequent turns
+                    assistant_content.append({
+                        "type": "thinking",
+                        "thinking": block.thinking,
+                        "signature": block.signature,
+                    })
+                elif block.type == "tool_use":
+                    assistant_content.append({
+                        "type": "tool_use", "id": block.id,
+                        "name": block.name, "input": block.input,
+                    })
+                    tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
 
         except anthropic.APIStatusError as e:
             log.error("Anthropic API error: %s", e)
@@ -200,7 +199,7 @@ class JarvisAgent:
             if on_chunk:
                 on_chunk(err)
 
-        return "".join(text_parts), "".join(thinking_parts), tool_calls
+        return "".join(text_parts), assistant_content, tool_calls
 
     def _build_tools_list(self) -> list[dict]:
         tools = list(self._registry.get_schemas())
