@@ -1,0 +1,46 @@
+jarvis:
+  name: JARVIS
+  model: claude-sonnet-4-6
+  max_tokens: 8192
+  temperature: 0.7
+  version: "2.0.0"
+  # Phase 2 advanced features
+  extended_thinking: true
+  thinking_budget: 5000
+  prompt_caching: true
+  computer_use: false
+
+voice:
+  wake_word: "jarvis"
+  stt_model: "base.en"
+  tts_voice: "en-US-GuyNeural"
+  vad_silence_threshold: 1.5
+  input_device: null
+  output_device: null
+
+ui:
+  theme: dark
+  accent_color: "#00D4FF"
+  secondary_color: "#0080FF"
+  bg_color: "#0A0E1A"
+  panel_color: "#0F1729"
+  text_color: "#E8F4FF"
+  muted_color: "#7BA7C8"
+  window_width: 820
+  window_height: 720
+  window_opacity: 0.97
+  always_on_top: false
+  start_minimized: false
+  hotkey: "<alt>+<space>"
+
+memory:
+  db_path: "~/.jarvis/jarvis.db"
+  max_context_memories: 15
+  auto_summarize_sessions: true
+  session_summary_threshold: 50
+
+tools:
+  shell_command_confirmation: true
+  max_web_results: 5
+  screenshot_quality: 85
+  max_file_read_bytes: 50000
